@@ -10,11 +10,18 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class DatabaseWorker extends Thread {
     private RabbitMQConnector _rabbitMQConnectorContent;
+    private ElasticSearchConnector _elasticSearchConnector;
+    private Logger _logger;
 
-    DatabaseWorker(Connection rabbitConnection, String queueContent) {
+    DatabaseWorker(Logger logger, Connection rabbitConnection, String queueContent) {
+        _logger = logger;
         _rabbitMQConnectorContent = new RabbitMQConnector(rabbitConnection, queueContent);
+        _elasticSearchConnector = new ElasticSearchConnector(logger);
     }
 
     public void run() {
@@ -41,12 +48,14 @@ public class DatabaseWorker extends Thread {
             catch (JSONException e) {
                 throw new RuntimeException(e);
             }
-            Map<String, Object> document = new HashMap<String, Object>();
-            document.put("id", docObject.get("id"));
-            document.put("CVEid", docObject.get("CVEid"));
-            document.put("Severity by NIST", docObject.get("Severity by NIST"));
-            document.put("Last Modified", docObject.get("Last Modified"));
-
+            String id = (String) docObject.get("id");
+            CVE documentCVE = new CVE((String) docObject.get("CVEid"),
+                                  (String) docObject.get("Description"),
+                                  (String) docObject.get("Severity by NIST"),
+                                  (String) docObject.get("Severity Level"),
+                                  (String) docObject.get("Last Modified"));
+            _elasticSearchConnector.saveDocumentToDatabase(id, documentCVE);
         }
+        _elasticSearchConnector.close();
     }
 }

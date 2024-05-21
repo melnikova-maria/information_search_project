@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration>
+    <Appenders>
+        <File name="FILEOUT" fileName="application_logs.log" append="false">
+            <PatternLayout>
+                <Pattern>%d{yyyyMMdd HH:mm:ss} %-5p [%t] %C{2} %F%L - %m%n</Pattern>
+            </PatternLayout>
+        </File>
+        <Socket name="logstash" host="127.0.0.1" port="5000" protocol="udp">
+            <JSONLog4j2Layout singleLine="true">
+                <UserField key="service" value="elk-test"/>
+            </JSONLog4j2Layout>
+        </Socket>
+        <Console name="STDOUT" target="SYSTEM_OUT">
+            <PatternLayout pattern="%m%n"/>
+        </Console>
+    </Appenders>
+
+    <Loggers>
+        <Root level="info">
+            <AppenderRef ref="FILEOUT" />
+            <AppenderRef ref="STDOUT" />
+            <AppenderRef ref="logstash" />
+        </Root>
+    </Loggers>
+</Configuration>

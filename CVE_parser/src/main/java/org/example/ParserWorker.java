@@ -4,10 +4,15 @@ import com.rabbitmq.client.Connection;
 import java.util.Objects;
 import org.json.*;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class ParserWorker extends Thread {
     private RabbitMQConnector _rabbitMQConnectorLinks;
     private RabbitMQConnector _rabbitMQConnectorContent;
-    ParserWorker(Connection rabbitConnection, String queueLinksToParse, String queueContent) {
+    private Logger _logger;
+    ParserWorker(Logger logger, Connection rabbitConnection, String queueLinksToParse, String queueContent) {
+        _logger = logger;
         _rabbitMQConnectorLinks = new RabbitMQConnector(rabbitConnection, queueLinksToParse);
         _rabbitMQConnectorContent = new RabbitMQConnector(rabbitConnection, queueContent);
     }
@@ -17,7 +22,8 @@ public class ParserWorker extends Thread {
             String receivedMessage = _rabbitMQConnectorLinks.getMessageFromQueue();
             if (Objects.equals(receivedMessage, "")) {
                 try {
-                    System.out.println("Thread #" + this.getId() + ": Empty queue ...");
+//                    System.out.println("Thread #" + this.getId() + ": Empty queue ...");
+                    _logger.info("Thread #" + this.getId() + ": Empty queue ...");
                     sleep(10000);
                     receivedMessage = _rabbitMQConnectorLinks.getMessageFromQueue();
                     if (Objects.equals(receivedMessage, "")) {
@@ -25,12 +31,14 @@ public class ParserWorker extends Thread {
                     }
                 }
                 catch (InterruptedException e) {
-                    System.out.println("Error occured in ParserWorker trying to sleep: " + e.getMessage());
+//                    System.out.println("Error occured in ParserWorker trying to sleep: " + e.getMessage());
+                    _logger.error("Error occured in ParserWorker trying to sleep: " + e.getMessage());
                     throw new RuntimeException(e);
                 }
             }
 
-            System.out.println("Thread #" + this.getId() + ": Basic.Get from links_to_parse queue: " + receivedMessage);
+//            System.out.println("Thread #" + this.getId() + ": Basic.Get from links_to_parse queue: " + receivedMessage);
+            _logger.info("Thread #" + this.getId() + ": Basic.Get from links_to_parse queue: " + receivedMessage);
             JSONObject idObject;
             try {
                 idObject = new JSONObject(receivedMessage);
@@ -38,10 +46,12 @@ public class ParserWorker extends Thread {
             catch (JSONException e) {
                 throw new RuntimeException(e);
             }
-            WebsitePageParser parser = new WebsitePageParser("https://nvd.nist.gov");
+            WebsitePageParser parser = new WebsitePageParser(_logger, "https://nvd.nist.gov");
             JSONObject content = parser.parse_CVE((String)idObject.get("link"), (String)idObject.get("hash"));
-            _rabbitMQConnectorContent.publishMessageToQueue(content.toString());
-            System.out.println("Thread #" + this.getId() + ": Basic.Publish to content_to_put queue: " + content);
+            if (!content.isEmpty()) {
+                _rabbitMQConnectorContent.publishMessageToQueue(content.toString());
+                _logger.info("Thread #" + this.getId() + ": Basic.Publish to content_to_put queue: " + content);
+            }
         }
     }
 }

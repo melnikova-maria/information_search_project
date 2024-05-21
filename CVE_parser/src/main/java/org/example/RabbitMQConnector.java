@@ -30,7 +30,7 @@ public class RabbitMQConnector {
             long deliveryTag = envelope.getDeliveryTag();
             String message = new String(body, StandardCharsets.UTF_8);
             this._storedMessage = message;
-            System.out.println(" [x] Received '" + _storedMessage + "'");
+//            System.out.println(" [x] Received '" + _storedMessage + "'");
             _channel.basicAck(deliveryTag, false);
         }
     }

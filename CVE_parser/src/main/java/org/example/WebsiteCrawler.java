@@ -16,12 +16,17 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import org.apache.commons.codec.binary.Hex;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class WebsiteCrawler {
     private final String _baseURL;
     private String _searchPath;
     private final JSONArray _CVEs = new JSONArray();
+    private Logger _logger;
 
-    public WebsiteCrawler(String baseURL, String searchPath) {
+    public WebsiteCrawler(Logger logger, String baseURL, String searchPath) {
+        _logger = logger;
         _baseURL = baseURL;
         _searchPath = searchPath;
     }
@@ -42,6 +47,7 @@ public class WebsiteCrawler {
             throw new RuntimeException(e);
         }
         if (httpResponse.statusCode() == 200) {
+            _logger.info("Successfully conected and downloaded document from " + _baseURL + _searchPath);
             Document doc = Jsoup.parse(httpResponse.body());
             String cssSelector = ".table > tbody:nth-child(2)";
             Element vulnerabilities = doc.selectFirst(cssSelector); // ".table > tbody:nth-child(2)"
@@ -70,8 +76,10 @@ public class WebsiteCrawler {
             return CVEs;
         }
         else {
-            System.out.println("Error while connecting to website " + _baseURL + _searchPath + "! Status code: " +
-                                httpResponse.statusCode());
+//            System.out.println("Error while connecting to website " + _baseURL + _searchPath + "! Status code: " +
+//                                httpResponse.statusCode());
+            _logger.warn("Error while connecting to website " + _baseURL + _searchPath + "! Status code: " +
+                    httpResponse.statusCode());
             return new JSONArray();
         }
     }
