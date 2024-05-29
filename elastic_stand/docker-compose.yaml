@@ -1,20 +1,5 @@
 version: "3"
 services:
-  setup:
-    image: elasticsearch:7.17.19
-    environment:
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
-      - KIBANA_PASSWORD=${KIBANA_PASSWORD}
-    container_name: setup
-    command:
-      - bash
-      - -c
-      - |
-        echo "Waiting for Elasticsearch availability";
-        until curl -s http://elasticsearch:9200 | grep -q "missing authentication credentials"; do sleep 30; done;
-        echo "Setting kibana_system password";
-        until curl -s -X POST -u "elastic:${ELASTIC_PASSWORD}" -H "Content-Type: application/json" http://elasticsearch:9200/_security/user/kibana_system/_password -d "{\"password\":\"${KIBANA_PASSWORD}\"}" | grep -q "^{}"; do sleep 10; done;
-        echo "All done!";
 
   elasticsearch:
     image: elasticsearch:7.17.19
@@ -32,6 +17,9 @@ services:
       # The password for the 'elastic' user
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
       - xpack.security.http.ssl.enabled=false
+      - network.host=0.0.0.0
+    networks:
+      - elastic
 
   kibana:
     image: kibana:7.17.19
@@ -47,17 +35,27 @@ services:
       # Change this to true if you want to sent
       # telemetry data to kibana developers
       - TELEMETRY_ENABLED=false
+    networks:
+      - elastic
 
   logstash:
     image: logstash:7.17.19
     container_name: logstash
-    volumes:
-      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
     ports:
-      - 5000:5000
-      - 9000:9000
+      - 5044:5044
+      - 5001:5001
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
     environment:
-      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+      ES_JAVA_OPTS: -Xmx2048m -Xms2048m"
+      http.host: 0.0.0.0
+      xpack.monitoring.enabled: 'false'
+      xpack.monitoring.elasticsearch.url: http://elasticsearch:9200
+    networks: 
+      - elastic
     depends_on:
       - elasticsearch
+
+networks:
+  elastic:
+    driver: bridge

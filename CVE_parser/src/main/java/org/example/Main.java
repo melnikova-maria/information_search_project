@@ -4,7 +4,6 @@ import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import com.google.gson.*;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.Channel;
@@ -85,15 +84,8 @@ public class Main {
             connection.close();
         }
         catch (IOException | TimeoutException e) {
-//            System.out.println("Oops! Error occurred in Connection with RabbitMQ: " + e.getMessage());
             logger.error("Oops! Error occured in main thread: " + e.getMessage());
             throw new RuntimeException(e);
         }
-    }
-
-    public static String prettyPrintUsingGson(String uglyJson) {
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        JsonElement jsonElement = JsonParser.parseString(uglyJson);
-        return gson.toJson(jsonElement);
     }
 }

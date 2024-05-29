@@ -6,9 +6,9 @@
                 <Pattern>%d{yyyyMMdd HH:mm:ss} %-5p [%t] %C{2} %F%L - %m%n</Pattern>
             </PatternLayout>
         </File>
-        <Socket name="logstash" host="127.0.0.1" port="5000" protocol="udp">
+        <Socket name="LOGSTASH" host="127.0.0.1" port="5001" protocol="tcp">
             <JSONLog4j2Layout singleLine="true">
-                <UserField key="service" value="elk-test"/>
+                <UserField key="service" value="CVE_parser"/>
             </JSONLog4j2Layout>
         </Socket>
         <Console name="STDOUT" target="SYSTEM_OUT">
@@ -20,7 +20,7 @@
         <Root level="info">
             <AppenderRef ref="FILEOUT" />
             <AppenderRef ref="STDOUT" />
-            <AppenderRef ref="logstash" />
+            <AppenderRef ref="LOGSTASH" />
         </Root>
     </Loggers>
 </Configuration>

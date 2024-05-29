@@ -1,7 +1,8 @@
 package org.example;
-import co.elastic.clients.elasticsearch.core.DeleteResponse;
-import co.elastic.clients.elasticsearch.core.GetResponse;
-import co.elastic.clients.elasticsearch.core.IndexResponse;
+import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch._types.aggregations.CalendarInterval;
+import co.elastic.clients.elasticsearch.core.*;
+import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
@@ -9,7 +10,9 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import org.apache.http.HttpHost;
 import org.elasticsearch.client.RestClient;
 import java.io.IOException;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.logging.log4j.Logger;
@@ -80,6 +83,69 @@ public class ElasticSearchConnector {
             throw new RuntimeException(e);
         }
     }
+
+    public void aggregateLogsByDatetime() {
+        try {
+            SearchResponse<Void> response = _client.search(b -> b
+                            .index("logs_db")
+                            .aggregations("dateLogsHistogram", a -> a
+                                    .dateHistogram(h -> h
+                                            .field("@timestamp")
+                                            .calendarInterval(CalendarInterval.Minute)
+                                    )
+                            ),
+                    Void.class
+            );
+            System.out.println(response.aggregations().get("dateLogsHistogram").toString());
+        }
+        catch (IOException | ElasticsearchException e) {
+            _logger.error("Oops! Error occured while trying to create aggregation: " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void searchForProductsInCVE(String name) {
+        try {
+            SearchResponse<ObjectNode> response = _client.search(s -> s
+                            .index(_indexName)
+                            .query(q -> q
+                                    .match(t -> t
+                                            .field("description")
+                                            .query(name)
+                                    )
+                            ),
+                    ObjectNode.class
+            );
+            List<Hit<ObjectNode>> hits = response.hits().hits();
+            for (Hit<ObjectNode> hit: hits) {
+                ObjectNode json = hit.source();
+                if (json != null) {
+                    System.out.println(json.get("text"));
+                }
+            }
+        }
+        catch (IOException e) {
+            _logger.error("Oops! Error occured  while trying to search for '" + name + "': " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void multiGetDocuments(List<String> ids) {
+        try {
+            MgetRequest request = new MgetRequest.Builder().ids(ids).index("cve_db").build();
+            MgetResponse<ObjectNode> response = _client.mget(request, ObjectNode.class);
+            if (response.docs() != null) {
+                for (Object document : response.docs()) {
+                    System.out.println(document.toString());
+                }
+            }
+        }
+        catch (IOException e) {
+            _logger.error("Oops! Error occured  while trying to search for : " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
+
 
     public void close() {
         try {
